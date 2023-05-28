@@ -1,0 +1,6 @@
+mtype: "DDPG"
+skip_frames_sync: 10
+skip_frames_backward: 1
+buffer_size: 1024
+noise_sigma: 0.35
+lr: 0.0005

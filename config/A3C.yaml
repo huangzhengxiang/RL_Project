@@ -1,0 +1,4 @@
+mtype: "A3C"
+num_workers: 8
+skip_frames_backward: 4
+lr: 0.0005

@@ -1,0 +1,4 @@
+mtype: "A2C"
+skip_episode_train: 1
+skip_frames_backward: 4
+lr: 0.0005

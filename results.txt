@@ -1,0 +1,27 @@
+DDPG
+buffer lr batch_size noise episode avg_rewards
+512 5e-4 32 0.35 500 -280.49
+1024 5e-4 32 0.35 500 -278.96 
+1024 5e-4 32 0.35 1000 -197.52
+1500 5e-4 32 0.35 1000 -203.32
+1024 1e-3 32 0.35 1000 -230.64
+1024 5e-4 64 0.35 1000 -165.33
+1024 2e-4 32 0.35 1000 -230.61
+1024 5e-4 64 0.3 1000 -314.35
+1024 5e-4 64 0.4 1000 -179.93
+1500 5e-4 64 0.35 1000 -189.14
+noise-decay
+1024 5e-4 32 0.35 1000 -148.68 (before delay, simply by luck!)
+
+A2C (train over episode)
+lr episode t_scale skip_frames policyNet avg_rewards
+5e-4 3000 True 5 [32,32,16] -812.19
+5e-4 3000 True 4 [32,32,16] -453.44
+5e-4 3000 True 3 [32,32,16] -733.25
+5e-4 3000 True 4 [32,32] -453.72
+
+A3C 
+lr workers episode t_scale avg_rewards
+5e-4 6 1000 True -433.21
+5e-4 8 1000 True -336.47
+5e-4 16 1000 True -288.11
