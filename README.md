@@ -5,6 +5,9 @@ I used OPENAI gymnasium as the environment, since gym is not officially supporte
 
 ~~~
 pip install gymnasium
+pip install gymnasium[atari]
+pip install gymnasium[accept-rom-license]
+pip install gymnasium[mujoco]
 ~~~
 
 The tutorial I referred to is on https://gymnasium.farama.org/environments/classic_control/pendulum/
@@ -40,4 +43,10 @@ Calculate the average score.
 
 ~~~
 python vis.py --test_times 100
+~~~
+
+### "Human Expert"
+BreakoutNoFrameskip-v4: 30
+~~~
+python human.py --env_name BreakoutNoFrameskip-v4
 ~~~
