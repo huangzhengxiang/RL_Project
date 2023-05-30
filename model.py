@@ -8,6 +8,7 @@ import gymnasium as gym
 
 act_funcs={
     "relu": nn.ReLU,
+    "silu": nn.SiLU,
     "leaky": nn.LeakyReLU,
     "elu": nn.ELU,
     "gelu": nn.GELU,
@@ -49,6 +50,23 @@ class MLP(nn.Module):
         for j in range(self.hid_layers+1):
             x = self.mlp[j](x)
         return x
+
+class ConvDQNet(nn.Module):
+    def __init__(self,in_dim,hid_dim,out_dim,act_func="sigmoid",last_act=None,device="cpu") -> None:
+        super().__init__()
+        self.device=device
+        self.mlp=MLP(in_dim,hid_dim,out_dim,act_func,last_act)
+
+    def forward(self,s,a):
+        B = s.shape[0]
+        if not isinstance(s,torch.Tensor):
+            s = torch.tensor(s).reshape(B,-1)
+        if not isinstance(a,torch.Tensor):
+            a = torch.tensor(a).reshape(B,-1)
+        s = s.float().reshape(B,-1)
+        a = a.float().reshape(B,-1)
+        x = torch.cat([s,a],dim=-1).to(device=self.device).float()
+        return self.mlp(x).reshape(-1)
 
 class DQNet(nn.Module):
     def __init__(self,in_dim,hid_dim,out_dim,act_func="sigmoid",last_act=None,device="cpu") -> None:
@@ -176,6 +194,108 @@ class StochasticPolicyNet(nn.Module):
         return Input
 
 class DDPG(ContinuousControl):
+    def __init__(self,config,state_dim,action_space) -> None:
+        self.config=config
+        self.state_dim=state_dim
+        if not isinstance(action_space,torch.Tensor):
+            self.action_space=torch.tensor(action_space)
+        else:
+            self.action_space=action_space
+        input_size_sa=state_dim + action_space.shape[0]
+        output_size_a=action_space.shape[0]
+        self.buffer=ReplayBuffer(config["buffer_size"], state_dim)
+        self.DQNet=DQNet(input_size_sa,[32,16],1,"relu",None)
+        self.targetDQNet=DQNet(input_size_sa,[32,16],1,"relu",None)
+        self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
+        self.policyNet=DeterministicPolicyNet(self.state_dim,[32,16],output_size_a,"relu","tanh",self._mapping)
+        self.targetPolicyNet=DeterministicPolicyNet(self.state_dim,[32,16],output_size_a,"relu","tanh",self._mapping)
+        self.targetPolicyNet.load_state_dict(self.policyNet.state_dict().copy())
+        self.mseLoss=nn.MSELoss()
+        self.DQNOptimizer=torch.optim.Adam(self.DQNet.parameters(),lr=self.config["lr"])
+        self.policyOptimizer=torch.optim.Adam(self.policyNet.parameters(),lr=self.config["lr"])
+        self.train_count=0
+        self.noise = self.config["noise_sigma"]
+
+    @torch.no_grad()
+    def action(self,s,t,e,episode):
+        # noise = (self.noise) / 2 if episode is not None and  (e >= episode / 3) else self.noise
+        noise = self.noise
+        opt_a = self.policyNet(torch.tensor(s).reshape(1,-1))
+        explore_a = opt_a + torch.randn_like(opt_a) * noise
+        clipped_a = torch.clip(explore_a,min=self.action_space[:,0].reshape(1,-1),max=self.action_space[:,1].reshape(1,-1))
+        return clipped_a.numpy().reshape(-1)
+    
+    def _mapping(self,out):
+        centralized = out + (self.action_space[:,1]+self.action_space[:,0])/2
+        mapped = centralized * ((self.action_space[:,1]-self.action_space[:,0])/2)
+        return mapped
+        
+    def update(self,record):
+        self.buffer.update(record)
+        return
+    
+    def need_train(self, frame, stopped, e):
+        return (frame % self.config["skip_frames_backward"]==0)
+    
+    def train(self, batch_size, gamma):
+        self.train_count+=1
+        # train the model
+        # generate target
+        self.DQNOptimizer.zero_grad()
+        self.policyOptimizer.zero_grad()
+        sample = self.buffer.sample(batch_size=batch_size)
+        mask = 1-sample["terminated"]
+        with torch.no_grad():
+            ap = self.targetPolicyNet(sample["s"])
+            TD_target = sample["r"] + mask*gamma*self.targetDQNet(sample["sp"],ap)
+        # regress DQN
+        Q_hat = self.DQNet(sample["s"],sample["a"])
+        loss = self.mseLoss(Q_hat,TD_target)
+        loss.backward()
+        self.DQNOptimizer.step()
+
+        self.DQNOptimizer.zero_grad()
+        self.policyOptimizer.zero_grad()
+        # optimize PolicyNet
+        Q_value = - self.DQNet(sample["s"],self.policyNet(sample["s"])).mean()
+        Q_value.backward()
+        self.policyOptimizer.step()
+        return loss.item()
+    
+    def need_sync(self):
+        if (self.train_count==self.config["skip_frames_sync"]):
+            self.train_count=0
+            return True
+        else:
+            return False
+    
+    def sync(self):
+        self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
+        self.targetPolicyNet.load_state_dict(self.policyNet.state_dict().copy())
+    
+    def save(self,dir_path,prefix=""):
+        os.makedirs(dir_path,exist_ok=True)
+        torch.save(self.DQNet.state_dict(),os.path.join(dir_path,prefix+"DQNet.pkl"))
+        torch.save(self.policyNet.state_dict(),os.path.join(dir_path,prefix+"policyNet.pkl"))
+        return
+
+    def load(self,dir_path,prefix=""):
+        self.DQNet.load_state_dict(torch.load(os.path.join(dir_path,prefix+"DQNet.pkl")))
+        self.policyNet.load_state_dict(torch.load(os.path.join(dir_path,prefix+"policyNet.pkl")))
+        self.sync()
+        return
+    
+    def set_train(self):
+        self.noise = self.config["noise_sigma"]
+        self.DQNet.train()
+        self.policyNet.train()
+    
+    def set_test(self):
+        self.noise = 0.
+        self.DQNet.eval()
+        self.policyNet.eval()
+
+class BaseDQN(ContinuousControl):
     def __init__(self,config,state_dim,action_space) -> None:
         self.config=config
         self.state_dim=state_dim

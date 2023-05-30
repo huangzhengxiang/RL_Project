@@ -15,10 +15,11 @@ The tutorial I referred to is on https://gymnasium.farama.org/environments/class
 Also, I referred to https://gymnasium.farama.org/tutorials/training_agents/blackjack_tutorial/ in order to build an agent.
 
 ### 1. train the agent
-
+For the discrete discision space games, we recommend to use DQN.
 Train the agent with DDPG.
 ~~~
-python main.py --mtype DDPG --episode 1000 --batch_size 64
+python run.py --env_name BreakoutNoFrameskip-v4 --mtype DQN --episode 1000 --batch_size 64 --maxT 10000
+python run.py --env_name Hopper-v2 --mtype DDPG --episode 1000 --batch_size 64 --maxT 10000
 ~~~
 
 Train the agent with A3C.
