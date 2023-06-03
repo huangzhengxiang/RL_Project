@@ -1,10 +1,10 @@
 mtype: "DDPG"
-dqnet: [128,64]
-policynet: [128,64]
+dqnet: [400,300]
+policynet: [400,300]
 skip_frames_sync: 10
 skip_frames_backward: 1
 buffer_size: 2048
 begin_noise: 0.4
 end_noise: 0.15
-lr: 0.0005
-weight_decay: 0.0005
+lr: 0.0004
+weight_decay: 0.001

@@ -21,7 +21,7 @@ if __name__=="__main__":
     # 1. parser 
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_name",type=str,default="Hopper-v2")
-    parser.add_argument("--episode",type=int,default=20)
+    parser.add_argument("--episode",type=int,default=2000)
     parser.add_argument("--maxT",type=int,default=2000)
     parser.add_argument("--gamma",type=float,default=0.99)
     parser.add_argument("--batch_size",type=int,default=64)

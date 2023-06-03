@@ -327,7 +327,7 @@ class DDPG(ContinuousControl):
         self.policyNet.eval()
 
 class BaseDQN(ContinuousControl):
-    def __init__(self,config,state_dim,action_space,hidden_dim=[512,128,128]) -> None:
+    def __init__(self,config,state_dim,action_space) -> None:
         self.config=config
         self.variant=self.config["variant"]
         self.obsType="ram" if isinstance(state_dim, int) else "rgb"
@@ -338,8 +338,8 @@ class BaseDQN(ContinuousControl):
             self.action_space=action_space
         if self.obsType=="ram":
             self.buffer=ReplayBuffer(config["buffer_size"], self.state_dim)
-            self.DQNet=DQNet(self.state_dim,hidden_dim,self.action_space.shape[0],"relu",None)
-            self.targetDQNet=DQNet(self.state_dim,hidden_dim,self.action_space.shape[0],"relu",None)
+            self.DQNet=DQNet(self.state_dim,self.config["mlp"],self.action_space.shape[0],"relu",None)
+            self.targetDQNet=DQNet(self.state_dim,self.config["mlp"],self.action_space.shape[0],"relu",None)
             self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
         else:
             pass
@@ -348,10 +348,15 @@ class BaseDQN(ContinuousControl):
                                            lr=self.config["lr"],
                                            weight_decay=self.config["weight_decay"])
         self.train_count=0
-        self.eps = self.config["epsilon"]
+        self.begin_noise = self.config["begin_noise"]
+        self.end_noise = self.config["end_noise"]
         
-    def eps_scheduler(self,t,e,episode):
-        return self.eps
+    def noise_scheduler(self,t,e,episode):
+        if e is not None and episode is not None:
+            # training
+            return (self.end_noise + (self.begin_noise-self.end_noise)*(1-e/(episode // 2))) if e < episode // 2 else self.end_noise
+        else:
+            return 0.
 
     @torch.no_grad()
     def eps_greedy(q_s: torch.Tensor, action_space: torch.Tensor, epsilon: float):
@@ -386,7 +391,7 @@ class BaseDQN(ContinuousControl):
     def action(self,s,t,e,episode):
         state_shape=list(s.shape)
         state_shape.insert(0,1)
-        eps = self.eps_scheduler(t,e,episode)
+        eps = self.noise_scheduler(t,e,episode)
         return self.action_space[BaseDQN.eps_greedy(self.DQNet(torch.tensor(s).reshape(state_shape)),
                                self.action_space,
                                eps)]
@@ -448,11 +453,12 @@ class BaseDQN(ContinuousControl):
         return
     
     def set_train(self):
-        self.eps = self.config["epsilon"]
+        self.begin_noise = self.config["begin_noise"]
+        self.end_noise = self.config["end_noise"]
         self.DQNet.train()
     
     def set_test(self):
-        self.eps = 0.
+        self.begin_noise = self.end_noise = 0.
         self.DQNet.eval()
 
 class A2C(ContinuousControl):

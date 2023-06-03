@@ -1,9 +1,10 @@
 mtype: "DQN"
 variant: "simple"
-dqnet: [256,100]
+mlp: [512,256]
 skip_frames_sync: 50
 skip_frames_backward: 1
 buffer_size: 32767
-epsilon: 0.1
+begin_noise: 0.4
+end_noise: 0.1
 lr: 0.0005
-weight_decay: 0.0005
+weight_decay: 0.001
