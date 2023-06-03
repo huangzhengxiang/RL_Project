@@ -16,9 +16,14 @@ Also, I referred to https://gymnasium.farama.org/tutorials/training_agents/black
 
 ### 1. train the agent
 For the discrete discision space games, we recommend to use DQN.
-Train the agent with DDPG.
+Train the agent with DQN.
 ~~~
-python run.py --env_name BreakoutNoFrameskip-v4 --mtype DQN --episode 1000 --batch_size 64 --maxT 10000
+python run.py --env_name VideoPinball-ramNoFrameskip-v4 --episode 1000 --batch_size 64 --maxT 10000
+python run.py --env_name BreakoutNoFrameskip-v4 --episode 1000 --batch_size 64 --maxT 10000
+python run.py --env_name PongNoFrameskip-v4 --episode 1000 --batch_size 64 --maxT 10000
+python run.py --env_name BoxingNoFrameskip-v4 --episode 1000 --batch_size 64 --maxT 10000
+~~~
+~~~
 python run.py --env_name Hopper-v2 --mtype DDPG --episode 1000 --batch_size 64 --maxT 10000
 ~~~
 

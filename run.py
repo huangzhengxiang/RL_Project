@@ -1,7 +1,7 @@
 import gymnasium as gym
 import torch
-from model import model_parser
-from vis import test
+from model import model_parser, get_model_name
+from vis import test, genSpace
 import argparse
 import os
 import numpy as np
@@ -10,26 +10,6 @@ import yaml
 SEED=8192
 config_dir = os.path.join(".","config")
 logger_dir = os.path.join(".","logger")
-
-def genSpace(env: gym.Env):
-    """
-    Generate the state space and the action space!
-    """
-    if len(env.observation_space.shape)==1:
-        # The input is a single vector!
-        state_dim=env.observation_space.shape[0]
-    else:
-        # The input is a picture!
-        state_dim=env.observation_space.shape
-    if type(env.action_space) == gym.spaces.Discrete:
-        # The action is discrete!
-        action_space = np.arange(env.action_space.n)
-    else:
-        # The action is continuous! Doesn't consider inf condition, but not a big deal!
-        action_space = np.zeros([env.action_space.shape[0],2])
-        action_space[:,0] = env.action_space.low
-        action_space[:,1] = env.action_space.high
-    return state_dim, action_space
 
 if __name__=="__main__":
     # 0. random seeds
@@ -40,12 +20,12 @@ if __name__=="__main__":
     np.random.seed(SEED)
     # 1. parser 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env_name",type=str,default="Pendulum-v1")
-    parser.add_argument("--episode",type=int,default=1000)
-    parser.add_argument("--maxT",type=int,default=1000)
+    parser.add_argument("--env_name",type=str,default="Hopper-v2")
+    parser.add_argument("--episode",type=int,default=20)
+    parser.add_argument("--maxT",type=int,default=2000)
     parser.add_argument("--gamma",type=float,default=0.99)
-    parser.add_argument("--batch_size",type=int,default=32)
-    parser.add_argument("--mtype",type=str,default="DDPG",help="DQN or DDPG or A2C or A3C")
+    parser.add_argument("--batch_size",type=int,default=64)
+    parser.add_argument("--mtype",type=str,default="",help="DQN or DDPG or A2C or A3C")
     args=parser.parse_args()
     world_name=args.env_name
     episode=args.episode
@@ -53,21 +33,20 @@ if __name__=="__main__":
     gamma=args.gamma
     batch_size=args.batch_size
     mtype=args.mtype
-    # 2. config file and logger file
-    config_path = os.path.join(config_dir,"{}.yaml".format(args.mtype))
+    
+    # 2. build world
+    env=gym.make(world_name,maxT,render_mode=None)
+    state_dim, action_space = genSpace(env)
+    
+    # 3. config file and logger file
+    mtype=get_model_name(mtype, action_space)
+    config_path = os.path.join(config_dir,"{}.yaml".format(mtype))
     with open(config_path,"rt") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     print(config)
-    os.makedirs(logger_dir,exist_ok=True)
-    logger_path = os.path.join(logger_dir,"{}.txt".format(mtype))
+    os.makedirs(os.path.join(logger_dir,world_name),exist_ok=True)
+    logger_path = os.path.join(logger_dir,world_name,"{}.txt".format(mtype))
     logger = open(logger_path,"wt")
-
-    # 3. build world
-    env=gym.make(world_name,maxT,render_mode=None)
-    state_dim, action_space = genSpace(env)
-    print(state_dim)
-    print(action_space)
-    # exit()
 
     # 4. initialize model
     config["gamma"]=gamma
@@ -82,7 +61,7 @@ if __name__=="__main__":
         reward_list = model.train(None,None)
         [print("{:.2f}".format(reward),file=logger) for reward in reward_list]
         logger.close()
-        model.load(dir_path=os.path.join(".","ckpts","A3C"))
+        model.load(dir_path=os.path.join(".","ckpts",world_name,"A3C"))
         best_reward = model._test()
         print("Best Reward for A3C: {:.3f}".format(best_reward))
         print("Finish Training!")
@@ -108,7 +87,9 @@ if __name__=="__main__":
             # get the s_{t+1}, r_t, end or not from the env
             sp, r, terminated, truncated, info = env.step(a)
             # update buffer
-            model.update([s.tolist(),a.tolist(),r,sp.tolist(),terminated])
+            model.update([s.tolist(),
+                          a.tolist() if isinstance(a,np.ndarray) else a,
+                          r,sp.tolist(),terminated])
             # update state
             s=sp
             frame += 1
@@ -137,7 +118,7 @@ if __name__=="__main__":
             print("Episode: {}, Average Reward: {:.3f}".format(e,avg_score))
             if avg_score > best_score:
                 best_score = avg_score
-                model.save(dir_path=os.path.join(".","ckpts",mtype))
+                model.save(dir_path=os.path.join(".","ckpts",world_name,mtype))
 
     # 4. save the logger
     env.close()
@@ -145,6 +126,6 @@ if __name__=="__main__":
 
 
     # 5. test the agent
-    model.load(dir_path=os.path.join(".","ckpts",mtype))
+    model.load(dir_path=os.path.join(".","ckpts",world_name,mtype))
     avg_score=test(world_name,model,action_space,maxT=maxT,test_times=100,render_mode=None)
     print("average score: {:.2f}".format(avg_score))

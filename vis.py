@@ -12,6 +12,26 @@ import yaml
 config_dir = os.path.join(".","config")
 vis_dir = os.path.join(".","best_ckpt")
 
+def genSpace(env: gym.Env):
+    """
+    Generate the state space and the action space!
+    """
+    if len(env.observation_space.shape)==1:
+        # The input is a single vector!
+        state_dim=env.observation_space.shape[0]
+    else:
+        # The input is a picture!
+        state_dim=env.observation_space.shape
+    if type(env.action_space) == gym.spaces.Discrete:
+        # The action is discrete!
+        action_space = np.arange(env.action_space.n)
+    else:
+        # The action is continuous! Doesn't consider inf condition, but not a big deal!
+        action_space = np.zeros([env.action_space.shape[0],2])
+        action_space[:,0] = env.action_space.low
+        action_space[:,1] = env.action_space.high
+    return state_dim, action_space
+
 def Qmean(model,observation_space,action_space) -> float:
     N = observation_space.shape[0]
     mean_a = []
@@ -67,44 +87,32 @@ def test(env_id,model,action_space,maxT=1000,test_times=10,render_mode=None) -> 
 if __name__=="__main__":
     # initialization
     parser=argparse.ArgumentParser()
-    parser.add_argument("--world",type=str,default="Pendulum-v1")
     parser.add_argument("--test_times",type=int,default=10)
     parser.add_argument("--render_mode",type=str,default=None)
     args=parser.parse_args()
-    maxT=200
-    world_name=args.world
+    maxT=2000
     test_times=args.test_times
     render_mode=args.render_mode
     # test the agent
-    model_list = os.listdir(vis_dir)
-    v_list = []
+    env_list = os.listdir(vis_dir)
 
-    # 3. build world
-    env=gym.make(world_name,maxT,render_mode=None)
-    state_dim=3
-    action_space=np.array([[-2.,2.]]) # continuous space
-
-    loc_space = (torch.tensor([range(0,180+1)])*0.01-1.2).reshape(-1,1,1).repeat(1,14+1,1)
-    speed_space = (torch.tensor([range(0,14+1)])*0.01-0.07).reshape(1,-1,1).repeat(180+1,1,1)
-    observation_space = torch.cat([loc_space,speed_space],dim=-1).reshape(-1,2)
-
-    for model_path in model_list:
-        model_name = model_path.split("_")[0]
-        config_path = os.path.join(config_dir,"{}.yaml".format(model_name))
-        with open(config_path,"rt") as f:
-            config = yaml.load(f, Loader=yaml.FullLoader)
-            f.close()
-        # 4. initialize model
-        if (model_name=="A3C"):
-            model_name="A2C"
-        model=model_parser(model_name,config,state_dim,action_space)
-        model.load(os.path.join(vis_dir,model_path))
-        # q_mean=Qmean(dqnet,observation_space,action_space)
-        # v_mean=Vmean(dqnet,observation_space,action_space)
-        # v_list.append(all_v(dqnet,observation_space,action_space).numpy())
-        # print("average q value: {:.3f}, v value: {:.3f}".format(q_mean,v_mean))
-        avg_score=test(world_name,model,action_space,maxT,test_times=test_times,render_mode=render_mode)
-        print("model: {}".format(os.path.join(vis_dir,model_path)))
-        print("average steps: {:.2f}".format(avg_score))
-    # vis_V(v_list,["ddqn","dqn"])
-    # vis_V_heatmap(v_list,["ddqn","dqn"])
+    for world_name in env_list:
+        model_list = os.listdir(os.path.join(vis_dir,world_name))
+        # 3. build world
+        env=gym.make(world_name,maxT,render_mode=None)
+        state_dim, action_space = genSpace(env)
+        
+        for model_path in model_list:
+            model_name = model_path.split("_")[0]
+            config_path = os.path.join(config_dir,"{}.yaml".format(model_name))
+            with open(config_path,"rt") as f:
+                config = yaml.load(f, Loader=yaml.FullLoader)
+                f.close()
+            # 4. initialize model
+            if (model_name=="A3C"):
+                model_name="A2C"
+            model=model_parser(model_name,config,state_dim,action_space)
+            model.load(os.path.join(vis_dir,world_name,model_path))
+            avg_score=test(world_name,model,action_space,maxT,test_times=test_times,render_mode=render_mode)
+            print("model: {}".format(os.path.join(vis_dir,world_name,model_path)))
+            print("average reward: {:.2f}".format(avg_score))
