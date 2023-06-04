@@ -21,8 +21,8 @@ if __name__=="__main__":
     # 1. parser 
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_name",type=str,default="Hopper-v2")
-    parser.add_argument("--episode",type=int,default=2000)
-    parser.add_argument("--maxT",type=int,default=2000)
+    parser.add_argument("--episode",type=int,default=3000)
+    parser.add_argument("--maxT",type=int,default=1000)
     parser.add_argument("--gamma",type=float,default=0.99)
     parser.add_argument("--batch_size",type=int,default=64)
     parser.add_argument("--mtype",type=str,default="",help="DQN or DDPG or A2C or A3C")
@@ -40,7 +40,8 @@ if __name__=="__main__":
     
     # 3. config file and logger file
     mtype=get_model_name(mtype, action_space)
-    config_path = os.path.join(config_dir,"{}.yaml".format(mtype))
+    print(mtype)
+    config_path = os.path.join(config_dir,world_name,"{}.yaml".format(mtype))
     with open(config_path,"rt") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     print(config)
@@ -51,9 +52,11 @@ if __name__=="__main__":
     # 4. initialize model
     config["gamma"]=gamma
     config["world_name"]=world_name
-    config["maxT"]=maxT
+    config["maxT"]=1000 if mtype=="DDPG" or mtype=="A2C" or mtype=="A3C" else maxT # The maxT for continous control is always 1000.
     config["episode"]=episode
     model=model_parser(mtype,config,state_dim,action_space)
+    maxT = config["maxT"]
+    env=gym.make(world_name,maxT,render_mode=None)
 
     # 5. A3C parallel training is handled inside its class
     if mtype=="A3C":
@@ -72,60 +75,65 @@ if __name__=="__main__":
     loss_list = []
     step_list = []
     reward_list = []
-    for e in range(episode):
-        # set model to train!
-        model.set_train()
+    try:
+        for e in range(episode):
+            # set model to train!
+            model.set_train()
 
-        s, info = env.reset()
-        frame = 0
-        avg_loss = 0.
-        itr = 0.
-        total_reward = 0.
-        for t in range(maxT):
-            # agent policy that uses the observation and info
-            a = model.action(s,t,e,episode)
-            # get the s_{t+1}, r_t, end or not from the env
-            sp, r, terminated, truncated, info = env.step(a)
-            # update buffer
-            model.update([s.tolist(),
-                          a.tolist() if isinstance(a,np.ndarray) else a,
-                          r,sp.tolist(),terminated])
-            # update state
-            s=sp
-            frame += 1
-            total_reward += r
+            s, info = env.reset()
+            frame = 0
+            avg_loss = 0.
+            itr = 0.
+            total_reward = 0.
+            for t in range(maxT):
+                # agent policy that uses the observation and info
+                a = model.action(s,t,e,episode)
+                # get the s_{t+1}, r_t, end or not from the env
+                sp, r, terminated, truncated, info = env.step(a)
+                # update buffer
+                model.update([s.tolist(),
+                            a.tolist() if isinstance(a,np.ndarray) else a,
+                            r,sp.tolist(),terminated])
+                # update state
+                s=sp
+                frame += 1
+                total_reward += r
 
-            if model.need_train(frame,terminated or truncated,e):
-                loss = model.train(batch_size, gamma)
-                avg_loss += loss
-                itr += 1
-                # For every synT steps, synchronize 2 nets.
-                if model.need_sync():
-                    model.sync()
+                if model.need_train(frame,terminated or truncated,e):
+                    loss = model.train(batch_size, gamma)
+                    avg_loss += loss
+                    itr += 1
+                    # For every synT steps, synchronize 2 nets.
+                    if model.need_sync():
+                        model.sync()
 
-            # logging
-            if terminated or truncated:
-                s, info = env.reset()
-                print("Episode: {}, Loss: {:.4f}, Terminated Steps: {}, Total Reward: {:.3f}".format(e,avg_loss/itr,t,total_reward))
-                loss_list.append(avg_loss/itr)
-                step_list.append(t)
-                reward_list.append(total_reward)
-                break
-        
-        if e % 40 == 0:
-            model.set_test()
-            avg_score=test(world_name,model,action_space,maxT=maxT,test_times=20,render_mode=None)
-            print("Episode: {}, Average Reward: {:.3f}".format(e,avg_score))
-            if avg_score > best_score:
-                best_score = avg_score
-                model.save(dir_path=os.path.join(".","ckpts",world_name,mtype))
+                # logging
+                if terminated or truncated:
+                    s, info = env.reset()
+                    model.episode_end()
+                    print("Episode: {}, Loss: {:.4f}, Terminated Steps: {}, Total Reward: {:.3f}".format(e,avg_loss/itr,t,total_reward))
+                    assert avg_loss/itr < 100_000 # weight decay dominate the loss
+                    loss_list.append(avg_loss/itr)
+                    step_list.append(t)
+                    reward_list.append(total_reward)
+                    break
+            
+            if e % 20 == 0:
+                model.set_test()
+                avg_score=test(world_name,model,action_space,maxT=maxT,test_times=2,render_mode=None)
+                print("Episode: {}, Average Reward: {:.3f}".format(e,avg_score))
+                if avg_score > best_score:
+                    best_score = avg_score
+                    model.save(dir_path=os.path.join(".","ckpts",world_name,mtype))
+    finally:
+        try:
+            # 4. save the logger
+            env.close()
+            [print("{} {:.2f} {} {:.2f}".format(j,loss_list[j],step_list[j],reward_list[j]),file=logger) for j in range(episode)]
 
-    # 4. save the logger
-    env.close()
-    [print("{} {:.2f} {} {:.2f}".format(j,loss_list[j],step_list[j],reward_list[j]),file=logger) for j in range(episode)]
+        finally:
 
-
-    # 5. test the agent
-    model.load(dir_path=os.path.join(".","ckpts",world_name,mtype))
-    avg_score=test(world_name,model,action_space,maxT=maxT,test_times=100,render_mode=None)
-    print("average score: {:.2f}".format(avg_score))
+            # 5. test the agent
+            model.load(dir_path=os.path.join(".","ckpts",world_name,mtype))
+            avg_score=test(world_name,model,action_space,maxT=maxT,test_times=10,render_mode=None)
+            print("average score: {:.2f}".format(avg_score))

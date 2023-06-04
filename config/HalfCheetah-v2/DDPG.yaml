@@ -1,0 +1,12 @@
+mtype: "DDPG"
+variant: "simple"
+dqnet: [400,300]
+policynet: [400,300]
+skip_frames_sync: 20
+skip_frames_backward: 4
+buffer_size: 20000
+begin_noise: 0.35
+end_noise: 0.15
+actor_lr: 0.0001
+critic_lr: 0.001
+weight_decay: 0.005

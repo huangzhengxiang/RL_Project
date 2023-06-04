@@ -79,6 +79,7 @@ def test(env_id,model,action_space,maxT=1000,test_times=10,render_mode=None) -> 
                 #     print("termination steps: {}".format(t))
                 # else:
                 #     print("Truncated!")
+                model.episode_end()
                 score.append(total_reward)
                 break
     env.close()
@@ -90,7 +91,7 @@ if __name__=="__main__":
     parser.add_argument("--test_times",type=int,default=10)
     parser.add_argument("--render_mode",type=str,default=None)
     args=parser.parse_args()
-    maxT=2000
+    maxT=1000
     test_times=args.test_times
     render_mode=args.render_mode
     # test the agent
@@ -104,7 +105,7 @@ if __name__=="__main__":
         
         for model_path in model_list:
             model_name = model_path.split("_")[0]
-            config_path = os.path.join(config_dir,"{}.yaml".format(model_name))
+            config_path = os.path.join(config_dir,world_name,"{}.yaml".format(model_name))
             with open(config_path,"rt") as f:
                 config = yaml.load(f, Loader=yaml.FullLoader)
                 f.close()

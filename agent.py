@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import torch
+import gc
 
 class ReplayBuffer(object):
     def  __init__(self,buffer_size,state_dim) -> None:
@@ -32,6 +33,33 @@ class ReplayBuffer(object):
             "terminated":torch.tensor([batch[j][4] for j in range(batch_size)]).float()
         }
         return batch
+    
+class StateBuffer(object):
+    def  __init__(self,buffer_size) -> None:
+        self.buffer_size = buffer_size
+        self.data = []
+
+    def update(self,record):
+        if self.is_full():
+            self.data.pop(0)
+            # tmp=self.data.pop(0)
+            # del tmp
+            # gc.collect()
+        self.data.append(record.copy())
+        return
+    
+    def is_full(self):
+        return len(self.data)==self.buffer_size
+    
+    def get_image(self):
+        assert self.is_full()
+        return self.data.copy()
+
+    def clean(self):
+        del self.data
+        gc.collect()
+        self.data=[]
+        return
 
 def action(pi_a_s):
     """

@@ -2,10 +2,12 @@ import torch
 import torch.nn as nn
 import random
 from torch.distributions import MultivariateNormal
-from agent import ReplayBuffer
+from agent import ReplayBuffer, StateBuffer
 import os
 import torch.multiprocessing as mp
 import gymnasium as gym
+import cv2
+import numpy as np
 
 act_funcs={
     "relu": nn.ReLU,
@@ -53,21 +55,62 @@ class MLP(nn.Module):
         return x
 
 class ConvDQNet(nn.Module):
-    def __init__(self,in_dim,hid_dim,out_dim,act_func="sigmoid",last_act=None,device="cpu") -> None:
+    def __init__(self,in_dim,hid_dim,fc_dim,out_dim,act_func="sigmoid",last_act=None,device="cpu") -> None:
         super().__init__()
+        assert len(hid_dim)==3
         self.device=device
-        self.mlp=MLP(in_dim,hid_dim,out_dim,act_func,last_act)
+        self.cnn1=nn.Sequential(
+            nn.Conv2d(
+                in_channels=in_dim,
+                out_channels=hid_dim[0],
+                kernel_size=8,
+                stride=4
+            ),
+            act_funcs[act_func]()
+        )
+        self.cnn2=nn.Sequential(
+            nn.Conv2d(
+                in_channels=hid_dim[0],
+                out_channels=hid_dim[1],
+                kernel_size=4,
+                stride=2
+            ),
+            act_funcs[act_func]()
+        )
+        self.cnn3=nn.Sequential(
+            nn.Conv2d(
+                in_channels=hid_dim[1],
+                out_channels=hid_dim[2],
+                kernel_size=3,
+                stride=1
+            ),
+            act_funcs[act_func]()
+        )
+        if last_act is None:
+            self.fc=nn.Sequential(
+                nn.Flatten(),
+                nn.Linear(hid_dim[-1]*49,fc_dim),
+                act_funcs[act_func](),
+                nn.Linear(fc_dim,out_dim)
+            )
+        else:
+            self.fc=nn.Sequential(
+                nn.Flatten(),
+                nn.Linear(hid_dim[-1]*49,fc_dim),
+                act_funcs[act_func](),
+                nn.Linear(fc_dim,out_dim),
+                act_funcs[last_act]()
+            )
 
-    def forward(self,s,a):
-        B = s.shape[0]
+    def forward(self,s):
+        B, C, H, W = s.shape[:4]
         if not isinstance(s,torch.Tensor):
-            s = torch.tensor(s).reshape(B,-1)
-        if not isinstance(a,torch.Tensor):
-            a = torch.tensor(a).reshape(B,-1)
-        s = s.float().reshape(B,-1)
-        a = a.float().reshape(B,-1)
-        x = torch.cat([s,a],dim=-1).to(device=self.device).float()
-        return self.mlp(x).reshape(-1)
+            s = torch.tensor(s)
+        s = s.float().reshape(B,C,H,W)
+        # only encode state and predicts Q values of all actions.
+        x = s.to(device=self.device).float()
+        action = self.fc(self.cnn3(self.cnn2(self.cnn1(x))))
+        return action
 
 class DQNet(nn.Module):
     def __init__(self,in_dim,hid_dim,out_dim,act_func="sigmoid",last_act=None,device="cpu") -> None:
@@ -106,13 +149,12 @@ class DVNet(nn.Module):
 
 def get_model_name(model_type,action_space):
     if model_type=="":
-        if (action_space.shape) == 1:
+        if len(action_space.shape) == 1:
             # discrete problem
             model_type = "DQN"
         else:
             # continuous problem
             model_type = "DDPG"
-    print(model_type)
     return model_type
 
 def model_parser(model_type,config,state_dim,action_space):
@@ -126,6 +168,20 @@ def model_parser(model_type,config,state_dim,action_space):
         return BaseDQN(config,state_dim,action_space)
     else:
         print("Unsupported Model Error!")
+        
+def preproccess(figure):
+    """_summary_
+
+    Args:
+        figure (list): (210,160,3)
+
+    Returns:
+        torch.Tensor: resized to (84,84,1)
+    """
+    figure = cv2.resize(np.array(figure,dtype=np.uint8),(84,84))
+    figure = np.array(cv2.cvtColor(figure,cv2.COLOR_BGR2GRAY)).reshape(84,84,1).tolist()
+    return figure
+    
 
 class ContinuousControl(object):
     """
@@ -162,6 +218,9 @@ class ContinuousControl(object):
         return False
     
     def sync(self):
+        pass
+    
+    def episode_end(self):
         pass
     
 class DeterministicPolicyNet(nn.Module):
@@ -231,9 +290,9 @@ class DDPG(ContinuousControl):
         self.targetPolicyNet.load_state_dict(self.policyNet.state_dict().copy())
         self.mseLoss=nn.MSELoss()
         self.DQNOptimizer=torch.optim.Adam(self.DQNet.parameters(),
-                                           lr=self.config["lr"],
+                                           lr=self.config["actor_lr"],
                                            weight_decay=self.config["weight_decay"])
-        self.policyOptimizer=torch.optim.Adam(self.policyNet.parameters(),lr=self.config["lr"])
+        self.policyOptimizer=torch.optim.Adam(self.policyNet.parameters(),lr=self.config["critic_lr"])
         self.train_count=0
         self.begin_noise = self.config["begin_noise"]
         self.end_noise = self.config["end_noise"]
@@ -280,7 +339,6 @@ class DDPG(ContinuousControl):
         Q_hat = self.DQNet(sample["s"],sample["a"])
         loss = self.mseLoss(Q_hat,TD_target)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.DQNet.parameters(),10)
         self.DQNOptimizer.step()
 
         self.DQNOptimizer.zero_grad()
@@ -288,7 +346,6 @@ class DDPG(ContinuousControl):
         # optimize PolicyNet
         Q_value = - self.DQNet(sample["s"],self.policyNet(sample["s"])).mean()
         Q_value.backward()
-        torch.nn.utils.clip_grad_norm_(self.policyNet.parameters(),10)
         self.policyOptimizer.step()
         return loss.item()
     
@@ -336,18 +393,29 @@ class BaseDQN(ContinuousControl):
             self.action_space=torch.tensor(action_space)
         else:
             self.action_space=action_space
+        self.device = "cpu" if self.obsType=="ram" else "cuda"
         if self.obsType=="ram":
             self.buffer=ReplayBuffer(config["buffer_size"], self.state_dim)
             self.DQNet=DQNet(self.state_dim,self.config["mlp"],self.action_space.shape[0],"relu",None)
             self.targetDQNet=DQNet(self.state_dim,self.config["mlp"],self.action_space.shape[0],"relu",None)
             self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
         else:
-            pass
+            self.buffer=ReplayBuffer(config["buffer_size"], self.state_dim)
+            self.DQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,"cuda")
+            self.targetDQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,"cuda")
+            self.DQNet.cuda()
+            self.targetDQNet.cuda()
+            self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
         self.mseLoss=nn.MSELoss()
         self.DQNOptimizer=torch.optim.Adam(self.DQNet.parameters(),
                                            lr=self.config["lr"],
                                            weight_decay=self.config["weight_decay"])
         self.train_count=0
+        self.batch_size = self.config["batch_size"]
+        self.batch_action=self.action_space.reshape(1,-1).repeat(self.batch_size,1).to(self.device)
+        self.action_buffer=StateBuffer(self.config["history"])
+        self.s_buffer=StateBuffer(self.config["history"])
+        self.sp_buffer=StateBuffer(self.config["history"])
         self.begin_noise = self.config["begin_noise"]
         self.end_noise = self.config["end_noise"]
         
@@ -356,7 +424,7 @@ class BaseDQN(ContinuousControl):
             # training
             return (self.end_noise + (self.begin_noise-self.end_noise)*(1-e/(episode // 2))) if e < episode // 2 else self.end_noise
         else:
-            return 0.
+            return 0.05 # to prevent that it cannot begin the game
 
     @torch.no_grad()
     def eps_greedy(q_s: torch.Tensor, action_space: torch.Tensor, epsilon: float):
@@ -389,44 +457,73 @@ class BaseDQN(ContinuousControl):
 
     @torch.no_grad()
     def action(self,s,t,e,episode):
-        state_shape=list(s.shape)
+        if t < self.config["skip_first_frames"]:
+            # for the first few frames, no action
+            if self.obsType=="rgb":
+                self.action_buffer.update(preproccess(s))
+            return self.action_space[0]
+        if self.obsType=="rgb":
+            self.action_buffer.update(preproccess(s))
+            s = self.action_buffer.get_image()
+        state_shape=list(s.shape if isinstance(s,np.ndarray) or isinstance(s,torch.Tensor) else np.array(s).shape)
         state_shape.insert(0,1)
         eps = self.noise_scheduler(t,e,episode)
         return self.action_space[BaseDQN.eps_greedy(self.DQNet(torch.tensor(s).reshape(state_shape)),
                                self.action_space,
                                eps)]
     
-    def _mapping(self,out):
-        centralized = out + (self.action_space[:,1]+self.action_space[:,0])/2
-        mapped = centralized * ((self.action_space[:,1]-self.action_space[:,0])/2)
-        return mapped
         
     def update(self,record):
-        self.buffer.update(record)
+        # random drop
+        if random.random()>(1/(self.config["history"])):
+            return
+        if self.obsType=="rgb":
+            self.s_buffer.update(preproccess(record[0]))
+            self.sp_buffer.update(preproccess(record[3]))
+            if self.s_buffer.is_full():
+                record[0]=self.s_buffer.get_image()
+                record[3]=self.sp_buffer.get_image()
+                self.buffer.update(record) 
+        else:
+            self.buffer.update(record)
+        del record
         return
+    
+    def episode_end(self):
+        self.action_buffer.clean()
+        self.s_buffer.clean()
+        self.sp_buffer.clean()
     
     def need_train(self, frame, stopped, e):
         return (frame % self.config["skip_frames_backward"]==0)
     
     def train(self, batch_size, gamma):
+        batch_size = self.batch_size
         self.train_count+=1
         # train the model
         # generate target
         self.DQNOptimizer.zero_grad()
         sample = self.buffer.sample(batch_size=batch_size)
+        # preprocess
         mask = 1-sample["terminated"]
+        sample["r"] = sample["r"].to(self.device)
+        sample["a"] = sample["a"].to(self.device)
+        mask = mask.to(self.device)
         
-        if self.variant=="ddqn":
-            TD_target = sample["r"] + mask*gamma*self.targetDQNet(
-                sample["sp"], torch.gather(batch_action,
-                                        dim=1,
-                                        index=BaseDQN.greedy(self.DQNet(sample["sp"]),action_space)[1].reshape(-1,1))
-            )
-        else:
-            TD_target = sample["r"] + mask*gamma*BaseDQN.greedy(self.targetDQNet(sample["sp"]))[0]        
+        with torch.no_grad():
+            if self.variant=="ddqn":
+                TD_target = sample["r"] + mask*gamma*torch.gather(self.targetDQNet(sample["sp"]),
+                                                                dim=-1,
+                                                                index=torch.gather(self.batch_action,
+                                                                                    dim=1,
+                                                                                    index=BaseDQN.greedy(self.DQNet(sample["sp"]))[1].reshape(-1,1))).reshape(-1)
+            else:
+                TD_target = sample["r"] + mask*gamma*BaseDQN.greedy(self.targetDQNet(sample["sp"]))[0]        
         
         # regress DQN
-        Q_hat = self.DQNet(sample["s"],sample["a"])
+        Q_hat = torch.gather(self.DQNet(sample["s"]),
+                             dim=-1,
+                             index=sample["a"].to(torch.int64).reshape(-1,1)).reshape(-1)
         loss = self.mseLoss(Q_hat,TD_target)
         loss.backward()
         self.DQNOptimizer.step()
