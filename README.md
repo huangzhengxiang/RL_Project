@@ -59,7 +59,7 @@ Calculate the average score.
 python vis.py --test_times 10
 ~~~
 
-### "Human Expert"
+### 3. "Human Expert"
 BoxingNoFrameskip-v4: 5
 BreakoutNoFrameskip-v4: 30
 PongNoFrameskip-v4: -4.5
@@ -69,4 +69,11 @@ python human.py --env_name VideoPinball-ramNoFrameskip-v4
 python human.py --env_name BreakoutNoFrameskip-v4
 python human.py --env_name PongNoFrameskip-v4
 python human.py --env_name BoxingNoFrameskip-v4
+~~~
+
+### 4. Other Utils
+
+~~~
+python vis.py --env_name VideoPinball-ramNoFrameskip-v4 --render_mode human --test_times 1
+python run.py --env_name VideoPinball-ramNoFrameskip-v4 --load
 ~~~

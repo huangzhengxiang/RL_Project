@@ -26,6 +26,7 @@ if __name__=="__main__":
     parser.add_argument("--gamma",type=float,default=0.99)
     parser.add_argument("--batch_size",type=int,default=64)
     parser.add_argument("--mtype",type=str,default="",help="DQN or DDPG or A2C or A3C")
+    parser.add_argument("--load",action="store_true",default=False)
     args=parser.parse_args()
     world_name=args.env_name
     episode=args.episode
@@ -33,6 +34,7 @@ if __name__=="__main__":
     gamma=args.gamma
     batch_size=args.batch_size
     mtype=args.mtype
+    load=args.load
     
     # 2. build world
     env=gym.make(world_name,maxT,render_mode=None)
@@ -47,6 +49,11 @@ if __name__=="__main__":
     print(config)
     os.makedirs(os.path.join(logger_dir,world_name),exist_ok=True)
     logger_path = os.path.join(logger_dir,world_name,"{}.txt".format(mtype))
+    if load:
+        logger = open(logger_path,"rt")
+        ori_log = logger.read()
+        next_episode = int(ori_log.split('\n')[-2].split(' ')[0])+1
+        logger.close()
     logger = open(logger_path,"wt")
 
     # 4. initialize model
@@ -55,6 +62,8 @@ if __name__=="__main__":
     config["maxT"]=1000 if mtype=="DDPG" or mtype=="A2C" or mtype=="A3C" else maxT # The maxT for continous control is always 1000.
     config["episode"]=episode
     model=model_parser(mtype,config,state_dim,action_space)
+    if load:
+        model.load(dir_path=os.path.join(".","ckpts",world_name,mtype))
     maxT = config["maxT"]
     env=gym.make(world_name,maxT,render_mode=None)
 
@@ -76,7 +85,7 @@ if __name__=="__main__":
     step_list = []
     reward_list = []
     try:
-        for e in range(episode):
+        for e in range(0 if not load else next_episode,episode):
             # set model to train!
             model.set_train()
 
@@ -129,7 +138,9 @@ if __name__=="__main__":
         try:
             # 4. save the logger
             env.close()
-            [print("{} {:.2f} {} {:.2f}".format(j,loss_list[j],step_list[j],reward_list[j]),file=logger) for j in range(episode)]
+            if load:
+                print(ori_log,file=logger)
+            [print("{} {:.2f} {} {:.2f}".format(j + (0 if not load else next_episode),loss_list[j],step_list[j],reward_list[j]),file=logger) for j in range(episode)]
 
         finally:
 
