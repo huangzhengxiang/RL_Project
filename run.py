@@ -22,7 +22,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_name",type=str,default="Hopper-v2")
     parser.add_argument("--episode",type=int,default=3000)
-    parser.add_argument("--maxT",type=int,default=1000)
+    parser.add_argument("--maxT",type=int,default=10000)
     parser.add_argument("--gamma",type=float,default=0.99)
     parser.add_argument("--batch_size",type=int,default=64)
     parser.add_argument("--mtype",type=str,default="",help="DQN or DDPG or A2C or A3C")

@@ -12,7 +12,9 @@ class ReplayBuffer(object):
         self.full=False
 
     def update(self,record):
-        self.data[self.head]=record.copy()
+        # del self.data[self.head]
+        # gc.collect()
+        self.data[self.head]=record
         self.head += 1
         if self.head == self.buffer_size:
             self.head = 0 # warp around
@@ -42,10 +44,7 @@ class StateBuffer(object):
     def update(self,record):
         if self.is_full():
             self.data.pop(0)
-            # tmp=self.data.pop(0)
-            # del tmp
-            # gc.collect()
-        self.data.append(record.copy())
+        self.data.append(record)
         return
     
     def is_full(self):
@@ -53,7 +52,7 @@ class StateBuffer(object):
     
     def get_image(self):
         assert self.is_full()
-        return self.data.copy()
+        return self.data
 
     def clean(self):
         del self.data

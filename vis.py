@@ -91,7 +91,6 @@ if __name__=="__main__":
     parser.add_argument("--test_times",type=int,default=10)
     parser.add_argument("--render_mode",type=str,default=None)
     args=parser.parse_args()
-    maxT=1000
     test_times=args.test_times
     render_mode=args.render_mode
     # test the agent
@@ -100,11 +99,13 @@ if __name__=="__main__":
     for world_name in env_list:
         model_list = os.listdir(os.path.join(vis_dir,world_name))
         # 3. build world
-        env=gym.make(world_name,maxT,render_mode=None)
+        env=gym.make(world_name,render_mode=None)
         state_dim, action_space = genSpace(env)
         
         for model_path in model_list:
             model_name = model_path.split("_")[0]
+            maxT = 1000 if model_name=="DDPG" or model_name=="A2C" or model_name=="A3C" else 8000
+            env=gym.make(world_name,maxT,render_mode=None)
             config_path = os.path.join(config_dir,world_name,"{}.yaml".format(model_name))
             with open(config_path,"rt") as f:
                 config = yaml.load(f, Loader=yaml.FullLoader)

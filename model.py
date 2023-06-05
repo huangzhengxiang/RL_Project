@@ -8,6 +8,7 @@ import torch.multiprocessing as mp
 import gymnasium as gym
 import cv2
 import numpy as np
+import gc
 
 act_funcs={
     "relu": nn.ReLU,
@@ -527,6 +528,7 @@ class BaseDQN(ContinuousControl):
         loss = self.mseLoss(Q_hat,TD_target)
         loss.backward()
         self.DQNOptimizer.step()
+        del sample, mask
         return loss.item()
     
     def need_sync(self):
