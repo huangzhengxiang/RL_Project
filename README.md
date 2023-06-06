@@ -23,6 +23,12 @@ video clips:
 
 <img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=420 height=320>
 
+<img src="video\Ant-v2\DDPG.gif" width=420>
+
+<img src="video\HalfCheetah-v2\DDPG.gif" width=420>
+
+<img src="video\Hopper-v2\DDPG.gif" width=420>
+
 ### 1. train the agent
 For the discrete discision space games, we recommend to use DQN.
 Train the agent with DQN.
