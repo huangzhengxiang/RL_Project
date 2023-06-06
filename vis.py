@@ -88,15 +88,19 @@ def test(env_id,model,action_space,maxT=1000,test_times=10,render_mode=None) -> 
 if __name__=="__main__":
     # initialization
     parser=argparse.ArgumentParser()
+    parser.add_argument("--env_name",type=str,default="")
     parser.add_argument("--test_times",type=int,default=10)
     parser.add_argument("--render_mode",type=str,default=None)
     args=parser.parse_args()
     test_times=args.test_times
     render_mode=args.render_mode
+    only_env=args.env_name
     # test the agent
     env_list = os.listdir(vis_dir)
 
     for world_name in env_list:
+        if only_env != "" and only_env != world_name:
+            continue
         model_list = os.listdir(os.path.join(vis_dir,world_name))
         # 3. build world
         env=gym.make(world_name,render_mode=None)
@@ -104,7 +108,7 @@ if __name__=="__main__":
         
         for model_path in model_list:
             model_name = model_path.split("_")[0]
-            maxT = 1000 if model_name=="DDPG" or model_name=="A2C" or model_name=="A3C" else 10000
+            maxT = 1000 if model_name=="DDPG" or model_name=="A2C" or model_name=="A3C" else 8000
             env=gym.make(world_name,maxT,render_mode=None)
             config_path = os.path.join(config_dir,world_name,"{}.yaml".format(model_name))
             with open(config_path,"rt") as f:

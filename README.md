@@ -41,12 +41,6 @@ Train the agent with A3C.
 python main.py --mtype A3C --episode 1000
 ~~~
 
-Maybe you can try A2C if you wish.
-
-~~~
-python main.py --mtype A2C --episode 3000
-~~~
-
 ### 2. visualize the results
 See the results illustration.
 ~~~
@@ -59,7 +53,7 @@ Calculate the average score.
 python vis.py --test_times 10
 ~~~
 
-### "Human Expert"
+### 3. "Human Expert"
 BoxingNoFrameskip-v4: 5
 BreakoutNoFrameskip-v4: 30
 PongNoFrameskip-v4: -4.5
@@ -70,3 +64,10 @@ python human.py --env_name BreakoutNoFrameskip-v4
 python human.py --env_name PongNoFrameskip-v4
 python human.py --env_name BoxingNoFrameskip-v4
 ~~~
+
+### 4. Other Utils
+
+~~~
+python vis.py --env_name VideoPinball-ramNoFrameskip-v4 --render_mode human --test_times 1
+python run.py --env_name VideoPinball-ramNoFrameskip-v4 --load
+~~~  
