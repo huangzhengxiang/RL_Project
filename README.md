@@ -21,7 +21,7 @@ Also, I referred to https://gymnasium.farama.org/tutorials/training_agents/black
 
 video clips:
 
-<img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=300>
+<img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=420 height=320>
 
 ### 1. train the agent
 For the discrete discision space games, we recommend to use DQN.
