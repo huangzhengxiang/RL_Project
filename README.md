@@ -41,12 +41,6 @@ Train the agent with A3C.
 python main.py --mtype A3C --episode 1000
 ~~~
 
-Maybe you can try A2C if you wish.
-
-~~~
-python main.py --mtype A2C --episode 3000
-~~~
-
 ### 2. visualize the results
 See the results illustration.
 ~~~
@@ -76,4 +70,4 @@ python human.py --env_name BoxingNoFrameskip-v4
 ~~~
 python vis.py --env_name VideoPinball-ramNoFrameskip-v4 --render_mode human --test_times 1
 python run.py --env_name VideoPinball-ramNoFrameskip-v4 --load
-~~~
+~~~  

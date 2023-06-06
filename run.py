@@ -98,7 +98,11 @@ if __name__=="__main__":
                 # agent policy that uses the observation and info
                 a = model.action(s,t,e,episode)
                 # get the s_{t+1}, r_t, end or not from the env
-                sp, r, terminated, truncated, info = env.step(a)
+                try:
+                    sp, r, terminated, truncated, info = env.step(a)
+                except TypeError:
+                    print(a)
+                    raise TypeError
                 # update buffer
                 model.update([s.tolist(),
                             a.tolist() if isinstance(a,np.ndarray) else a,

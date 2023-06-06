@@ -4,11 +4,11 @@ cnn: [32,64,64]
 final: 512
 image: [84,84,1]
 mlp: [512,256,256]
-skip_frames_sync: 100
+skip_frames_sync: 500
 history: 4
 skip_frames_backward: 16
 skip_first_frames: 10
-buffer_size: 20000
+buffer_size: 50000
 begin_noise: 0.5
 end_noise: 0.1
 lr: 0.00025
