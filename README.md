@@ -19,6 +19,10 @@ The tutorial I referred to is on https://gymnasium.farama.org/environments/class
 
 Also, I referred to https://gymnasium.farama.org/tutorials/training_agents/blackjack_tutorial/ in order to build an agent.
 
+video clips:
+
+<img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=300>
+
 ### 1. train the agent
 For the discrete discision space games, we recommend to use DQN.
 Train the agent with DQN.
@@ -68,6 +72,7 @@ python human.py --env_name BoxingNoFrameskip-v4
 ### 4. Other Utils
 
 ~~~
+python vis.py --render_mode rgb_array --test_times 1 --env_name VideoPinball-ramNoFrameskip-v4
 python vis.py --env_name VideoPinball-ramNoFrameskip-v4 --render_mode human --test_times 1
 python run.py --env_name VideoPinball-ramNoFrameskip-v4 --load
 ~~~  

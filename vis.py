@@ -8,9 +8,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from model import model_parser
 import yaml
+import imageio
 
 config_dir = os.path.join(".","config")
 vis_dir = os.path.join(".","best_ckpt")
+gif_dir = os.path.join(".","video")
 
 def genSpace(env: gym.Env):
     """
@@ -61,16 +63,22 @@ def vis_V_heatmap(v_vector,n_vector):
 @torch.no_grad()
 def test(env_id,model,action_space,maxT=1000,test_times=10,render_mode=None) -> float:
     env = gym.make(env_id,maxT,render_mode=render_mode)
+    env.metadata['render_fps']=24
     score = []
+    screen = []
     model.set_test()
+    if render_mode=="rgb_array":
+        test_times = 1
     for _ in range(test_times):
         s, info = env.reset()
+        screen.append(env.render())
         total_reward = 0.
         for t in range(maxT):
             # agent policy that uses the observation and info
             a = model.action(s,t,None,None)
             # get the s_{t+1}, r_t, end or not from the env
             sp, r, terminated, truncated, info = env.step(a)
+            screen.append(env.render())
             # update state
             s=sp
             total_reward += r
@@ -83,7 +91,7 @@ def test(env_id,model,action_space,maxT=1000,test_times=10,render_mode=None) -> 
                 score.append(total_reward)
                 break
     env.close()
-    return sum(score)/len(score)
+    return sum(score)/len(score), screen
 
 if __name__=="__main__":
     # initialization
@@ -108,7 +116,7 @@ if __name__=="__main__":
         
         for model_path in model_list:
             model_name = model_path.split("_")[0]
-            maxT = 1000 if model_name=="DDPG" or model_name=="A2C" or model_name=="A3C" else 8000
+            maxT = 1000 if model_name=="DDPG" or model_name=="A2C" or model_name=="A3C" else 10000
             env=gym.make(world_name,maxT,render_mode=None)
             config_path = os.path.join(config_dir,world_name,"{}.yaml".format(model_name))
             with open(config_path,"rt") as f:
@@ -119,6 +127,9 @@ if __name__=="__main__":
                 model_name="A2C"
             model=model_parser(model_name,config,state_dim,action_space)
             model.load(os.path.join(vis_dir,world_name,model_path))
-            avg_score=test(world_name,model,action_space,maxT,test_times=test_times,render_mode=render_mode)
+            avg_score,screen=test(world_name,model,action_space,maxT,test_times=test_times,render_mode=render_mode)
+            if render_mode=="rgb_array":
+                os.makedirs(os.path.join(gif_dir,world_name),exist_ok=True)
+                imageio.mimsave(os.path.join(gif_dir,world_name,"{}.gif".format(model_path)),screen,"GIF",duration=41.67)
             print("model: {}".format(os.path.join(vis_dir,world_name,model_path)))
             print("average reward: {:.2f}".format(avg_score))
