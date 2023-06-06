@@ -2,7 +2,7 @@ mtype: "DDPG"
 variant: "simple"
 dqnet: [400,300]
 policynet: [400,300]
-skip_frames_sync: 10
+skip_frames_sync: 50
 skip_frames_backward: 1
 buffer_size: 100000
 begin_noise: 0.45

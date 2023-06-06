@@ -104,7 +104,7 @@ if __name__=="__main__":
         
         for model_path in model_list:
             model_name = model_path.split("_")[0]
-            maxT = 1000 if model_name=="DDPG" or model_name=="A2C" or model_name=="A3C" else 8000
+            maxT = 1000 if model_name=="DDPG" or model_name=="A2C" or model_name=="A3C" else 10000
             env=gym.make(world_name,maxT,render_mode=None)
             config_path = os.path.join(config_dir,world_name,"{}.yaml".format(model_name))
             with open(config_path,"rt") as f:
