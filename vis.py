@@ -63,7 +63,8 @@ def vis_V_heatmap(v_vector,n_vector):
 @torch.no_grad()
 def test(env_id,model,action_space,maxT=1000,test_times=10,render_mode=None) -> float:
     env = gym.make(env_id,maxT,render_mode=render_mode)
-    env.metadata['render_fps']=24
+    if render_mode=="rgb_array":
+        env.metadata['render_fps']=24
     score = []
     screen = []
     model.set_test()
@@ -71,14 +72,16 @@ def test(env_id,model,action_space,maxT=1000,test_times=10,render_mode=None) -> 
         test_times = 1
     for _ in range(test_times):
         s, info = env.reset()
-        screen.append(env.render())
+        if render_mode=="rgb_array":
+            screen.append(env.render())
         total_reward = 0.
         for t in range(maxT):
             # agent policy that uses the observation and info
             a = model.action(s,t,None,None)
             # get the s_{t+1}, r_t, end or not from the env
             sp, r, terminated, truncated, info = env.step(a)
-            screen.append(env.render())
+            if render_mode=="rgb_array":
+                screen.append(env.render())
             # update state
             s=sp
             total_reward += r

@@ -133,7 +133,7 @@ if __name__=="__main__":
             
             if e % 20 == 0:
                 model.set_test()
-                avg_score=test(world_name,model,action_space,maxT=maxT,test_times=2,render_mode=None)
+                avg_score,_=test(world_name,model,action_space,maxT=maxT,test_times=2,render_mode=None)
                 print("Episode: {}, Average Reward: {:.3f}".format(e,avg_score))
                 if avg_score > best_score:
                     best_score = avg_score
@@ -150,5 +150,5 @@ if __name__=="__main__":
 
             # 5. test the agent
             model.load(dir_path=os.path.join(".","ckpts",world_name,mtype))
-            avg_score=test(world_name,model,action_space,maxT=maxT,test_times=10,render_mode=None)
+            avg_score,_=test(world_name,model,action_space,maxT=maxT,test_times=10,render_mode=None)
             print("average score: {:.2f}".format(avg_score))

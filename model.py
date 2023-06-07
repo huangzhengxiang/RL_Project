@@ -130,7 +130,7 @@ class ConvDQNet(nn.Module):
             feature = self.cnn3(self.cnn2(self.cnn1(x)))
             a_s_a = self.fc(feature)
             v_s = self.val(feature).reshape(B,-1).repeat(1,self.out_dim)
-            q_s_a = v_s + a_s_a - a_s_a.mean(dim=-1,keep_dim=True).repeat(1,self.out_dim)
+            q_s_a = v_s + a_s_a - a_s_a.mean(dim=-1,keepdim=True).repeat(1,self.out_dim)
         else:
             q_s_a = self.fc(self.cnn3(self.cnn2(self.cnn1(x))))
         return q_s_a
@@ -364,12 +364,13 @@ class DDPG(ContinuousControl):
         loss.backward()
         self.DQNOptimizer.step()
 
-        self.DQNOptimizer.zero_grad()
-        self.policyOptimizer.zero_grad()
-        # optimize PolicyNet
-        Q_value = - self.DQNet(sample["s"],self.policyNet(sample["s"])).mean()
-        Q_value.backward()
-        self.policyOptimizer.step()
+        if "skip_policy_update" in self.config and (self.train_count % self.config["skip_policy_update"]==0):
+            self.DQNOptimizer.zero_grad()
+            self.policyOptimizer.zero_grad()
+            # optimize PolicyNet
+            Q_value = - self.DQNet(sample["s"],self.policyNet(sample["s"])).mean()
+            Q_value.backward()
+            self.policyOptimizer.step()
         return loss.item()
     
     def need_sync(self):
