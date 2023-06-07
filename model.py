@@ -424,11 +424,13 @@ class BaseDQN(ContinuousControl):
             self.targetDQNet=DQNet(self.state_dim,self.config["mlp"],self.action_space.shape[0],"relu",None)
             self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
         else:
+            if "device" in self.config:
+                self.device=self.config["device"]  # default "cuda"
             self.buffer=ReplayBuffer(config["buffer_size"], self.state_dim)
-            self.DQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,self.variant=="dueling" or self.variant=="dddqn","cuda")
-            self.targetDQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,self.variant=="dueling"or self.variant=="dddqn","cuda")
-            self.DQNet.cuda()
-            self.targetDQNet.cuda()
+            self.DQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,self.variant=="dueling" or self.variant=="dddqn",self.device)
+            self.targetDQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,self.variant=="dueling"or self.variant=="dddqn",self.device)
+            self.DQNet.to(device=self.device)
+            self.targetDQNet.to(device=self.device)
             self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
         self.mseLoss=nn.MSELoss()
         self.DQNOptimizer=torch.optim.Adam(self.DQNet.parameters(),
