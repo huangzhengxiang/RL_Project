@@ -56,10 +56,12 @@ class MLP(nn.Module):
         return x
 
 class ConvDQNet(nn.Module):
-    def __init__(self,in_dim,hid_dim,fc_dim,out_dim,act_func="sigmoid",last_act=None,device="cpu") -> None:
+    def __init__(self,in_dim,hid_dim,fc_dim,out_dim,act_func="sigmoid",last_act=None,is_dueling=False,device="cpu") -> None:
         super().__init__()
         assert len(hid_dim)==3
         self.device=device
+        self.is_dueling=is_dueling
+        self.out_dim=out_dim
         self.cnn1=nn.Sequential(
             nn.Conv2d(
                 in_channels=in_dim,
@@ -94,12 +96,26 @@ class ConvDQNet(nn.Module):
                 act_funcs[act_func](),
                 nn.Linear(fc_dim,out_dim)
             )
+            if is_dueling:
+                self.val=nn.Sequential(
+                    nn.Flatten(),
+                    nn.Linear(hid_dim[-1]*49,fc_dim),
+                    act_funcs[act_func](),
+                    nn.Linear(fc_dim,1)
+                )
         else:
             self.fc=nn.Sequential(
                 nn.Flatten(),
                 nn.Linear(hid_dim[-1]*49,fc_dim),
                 act_funcs[act_func](),
                 nn.Linear(fc_dim,out_dim),
+                act_funcs[last_act]()
+            )
+            self.val=nn.Sequential(
+                nn.Flatten(),
+                nn.Linear(hid_dim[-1]*49,fc_dim),
+                act_funcs[act_func](),
+                nn.Linear(fc_dim,1),
                 act_funcs[last_act]()
             )
 
@@ -110,8 +126,14 @@ class ConvDQNet(nn.Module):
         s = s.float().reshape(B,C,H,W)
         # only encode state and predicts Q values of all actions.
         x = s.to(device=self.device).float()
-        action = self.fc(self.cnn3(self.cnn2(self.cnn1(x))))
-        return action
+        if self.is_dueling:
+            feature = self.cnn3(self.cnn2(self.cnn1(x)))
+            a_s_a = self.fc(feature)
+            v_s = self.val(feature).reshape(B,-1).repeat(1,self.out_dim)
+            q_s_a = v_s + a_s_a - a_s_a.mean(dim=-1,keep_dim=True).repeat(1,self.out_dim)
+        else:
+            q_s_a = self.fc(self.cnn3(self.cnn2(self.cnn1(x))))
+        return q_s_a
 
 class DQNet(nn.Module):
     def __init__(self,in_dim,hid_dim,out_dim,act_func="sigmoid",last_act=None,device="cpu") -> None:
@@ -402,8 +424,8 @@ class BaseDQN(ContinuousControl):
             self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
         else:
             self.buffer=ReplayBuffer(config["buffer_size"], self.state_dim)
-            self.DQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,"cuda")
-            self.targetDQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,"cuda")
+            self.DQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,self.variant=="dueling" or self.variant=="dddqn","cuda")
+            self.targetDQNet=ConvDQNet(self.config["history"],self.config["cnn"],self.config["final"],self.action_space.shape[0],"relu",None,self.variant=="dueling"or self.variant=="dddqn","cuda")
             self.DQNet.cuda()
             self.targetDQNet.cuda()
             self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
@@ -512,7 +534,7 @@ class BaseDQN(ContinuousControl):
         mask = mask.to(self.device)
         
         with torch.no_grad():
-            if self.variant=="ddqn":
+            if self.variant=="ddqn" or self.variant=="dddqn":
                 TD_target = sample["r"] + mask*gamma*torch.gather(self.targetDQNet(sample["sp"]),
                                                                 dim=-1,
                                                                 index=torch.gather(self.batch_action,
