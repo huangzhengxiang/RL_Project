@@ -79,6 +79,6 @@ python human.py --env_name BoxingNoFrameskip-v4
 
 ~~~
 python vis.py --render_mode rgb_array --test_times 1 --env_name VideoPinball-ramNoFrameskip-v4
-python vis.py --env_name VideoPinball-ramNoFrameskip-v4 --render_mode human --test_times 1
+python vis.py --env_name BreakoutNoFrameskip-v4 --render_mode human --test_times 1
 python run.py --env_name VideoPinball-ramNoFrameskip-v4 --load
 ~~~  
