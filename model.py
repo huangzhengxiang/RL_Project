@@ -357,7 +357,7 @@ class DDPG(ContinuousControl):
         mask = 1-sample["terminated"]
         with torch.no_grad():
             ap = self.targetPolicyNet(sample["sp"])
-            if self.config["target_smooth"]:
+            if "target_smooth" in self.config and self.config["target_smooth"]:
                 ap = torch.clip(ap + torch.randn_like(ap) * self.config["target_noise"],
                            min=self.action_space[:,0].reshape(1,-1).repeat(batch_size,1),
                            max=self.action_space[:,1].reshape(1,-1).repeat(batch_size,1))
