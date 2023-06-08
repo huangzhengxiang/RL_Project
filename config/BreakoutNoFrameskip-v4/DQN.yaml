@@ -1,12 +1,12 @@
 mtype: "DQN"
-variant: "dddqn"
+variant: "simple"
 cnn: [32,64,64]
 final: 512
 image: [84,84,1]
 mlp: [512,256,256]
 skip_frames_sync: 500
 history: 4
-skip_frames_backward: 50
+skip_frames_backward: 16
 skip_first_frames: 10
 buffer_size: 30000
 begin_noise: 0.6
@@ -15,3 +15,4 @@ lr: 0.0005
 weight_decay: 0.005
 batch_size: 32
 episode: 1000
+skip_action: 4

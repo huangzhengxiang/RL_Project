@@ -1,7 +1,7 @@
 import imageio 
 import cv2
 
-video_path="video\Humanoid-v2\DDPG.mp4"
+video_path="video\HalfCheetah-v2\DDPG.mp4"
 content=imageio.get_reader(video_path,"MP4")
 frames = []
 for j in range(500):

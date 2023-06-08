@@ -26,6 +26,8 @@ class ReplayBuffer(object):
         if self.full:
             high = self.buffer_size
         rand_id=np.random.randint(0,high,batch_size)
+        if high==0:
+            return None
         batch = [self.data[rand_id[j]] for j in range(batch_size)]
         batch = {
             "s": torch.tensor([batch[j][0] for j in range(batch_size)]).float(),

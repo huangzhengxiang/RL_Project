@@ -128,7 +128,7 @@ if __name__=="__main__":
                     s, info = env.reset()
                     model.episode_end()
                     print("Episode: {}, Loss: {:.4f}, Terminated Steps: {}, Total Reward: {:.3f}".format(e,avg_loss/itr,t,total_reward))
-                    assert avg_loss/itr < 100_000 # weight decay dominate the loss
+                    assert avg_loss/itr < 2_000 # weight decay dominate the loss
                     loss_list.append(avg_loss/itr)
                     step_list.append(t)
                     reward_list.append(total_reward)

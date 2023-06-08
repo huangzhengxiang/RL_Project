@@ -456,6 +456,7 @@ class BaseDQN(ContinuousControl):
         self.sp_buffer=StateBuffer(self.config["history"])
         self.begin_noise = self.config["begin_noise"]
         self.end_noise = self.config["end_noise"]
+        self.buffered_action = None
         
     def noise_scheduler(self,t,e,episode):
         if e is not None and episode is not None:
@@ -503,12 +504,16 @@ class BaseDQN(ContinuousControl):
         if self.obsType=="rgb":
             self.action_buffer.update(preproccess(s))
             s = self.action_buffer.get_image()
-        state_shape=list(s.shape if isinstance(s,np.ndarray) or isinstance(s,torch.Tensor) else np.array(s).shape)
-        state_shape.insert(0,1)
-        eps = self.noise_scheduler(t,e,episode)
-        return self.action_space[BaseDQN.eps_greedy(self.DQNet(torch.tensor(s).reshape(state_shape)),
-                               self.action_space,
-                               eps)]
+        if (self.buffered_action is not None) and "skip_action" in self.config and random.random()>(1/(self.config["skip_action"])):
+            pass
+        else:
+            state_shape=list(s.shape if isinstance(s,np.ndarray) or isinstance(s,torch.Tensor) else np.array(s).shape)
+            state_shape.insert(0,1)
+            eps = self.noise_scheduler(t,e,episode)
+            self.buffered_action = self.action_space[BaseDQN.eps_greedy(self.DQNet(torch.tensor(s).reshape(state_shape)),
+                                self.action_space,
+                                eps)]
+        return self.buffered_action
     
         
     def update(self,record):
@@ -542,6 +547,8 @@ class BaseDQN(ContinuousControl):
         # generate target
         self.DQNOptimizer.zero_grad()
         sample = self.buffer.sample(batch_size=batch_size)
+        if sample is None:
+            return 0.
         # preprocess
         mask = 1-sample["terminated"]
         sample["r"] = sample["r"].to(self.device)
