@@ -1,5 +1,22 @@
-# RL_Project
+# RL dProject
+<b>Author: 黄正翔 (Huang, Zhengxiang)</b>
+
 This is the final project for Reinforcement Learning (RL)
+
+Demo video clips:
+VideoPinball
+<img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=420 height=320>
+Boxing
+<img src="video\BoxingNoFrameskip-v4\DQN.gif" width=420 height=320>
+Ant
+<img src="video\Ant-v2\DDPG.gif" width=420>
+HalfCheetah
+<img src="video\HalfCheetah-v2\DDPG.gif" width=420>
+Hopper
+<img src="video\Hopper-v2\DDPG.gif" width=420>
+Humanoid
+<img src="video\Humanoid-v2\DDPG.gif" width=420>
+
 ### 0. Environment
 I used OPENAI gymnasium as the environment, since gym is not officially supported now.
 
@@ -19,20 +36,6 @@ The tutorial I referred to is on https://gymnasium.farama.org/environments/class
 
 Also, I referred to https://gymnasium.farama.org/tutorials/training_agents/blackjack_tutorial/ in order to build an agent.
 
-video clips:
-
-<img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=420 height=320>
-
-<img src="video\BoxingNoFrameskip-v4\DQN.gif" width=420 height=320>
-
-<img src="video\Ant-v2\DDPG.gif" width=420>
-
-<img src="video\HalfCheetah-v2\DDPG.gif" width=420>
-
-<img src="video\Hopper-v2\DDPG.gif" width=420>
-
-<img src="video\Humanoid-v2\DDPG.gif" width=420>
-
 ### 1. train the agent
 For the discrete discision space games, we recommend to use DQN.
 Train the agent with DQN.
@@ -47,12 +50,6 @@ python run.py --env_name Hopper-v2
 python run.py --env_name Humanoid-v2
 python run.py --env_name HalfCheetah-v2
 python run.py --env_name Ant-v2
-~~~
-
-Train the agent with A3C.
-
-~~~
-python main.py --mtype A3C --episode 1000
 ~~~
 
 ### 2. visualize the results
