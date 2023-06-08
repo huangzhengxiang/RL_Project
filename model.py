@@ -368,13 +368,16 @@ class DDPG(ContinuousControl):
         loss.backward()
         self.DQNOptimizer.step()
 
-        if "skip_policy_update" in self.config and (self.train_count % self.config["skip_policy_update"]==0):
+        if (not ("skip_policy_update" in self.config)) or (("skip_policy_update" in self.config) and (self.train_count % self.config["skip_policy_update"]==0)):
             self.DQNOptimizer.zero_grad()
             self.policyOptimizer.zero_grad()
             # optimize PolicyNet
             Q_value = - self.DQNet(sample["s"],self.policyNet(sample["s"])).mean()
             Q_value.backward()
             self.policyOptimizer.step()
+        else:
+            print("Unreachable!!!")
+            raise NotImplementedError()
         return loss.item()
     
     def need_sync(self):
