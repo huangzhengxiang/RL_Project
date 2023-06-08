@@ -4,18 +4,31 @@
 This is the final project for Reinforcement Learning (RL)
 
 Demo video clips:
+
 VideoPinball
+
 <img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=420 height=320>
+
 Boxing
+
 <img src="video\BoxingNoFrameskip-v4\DQN.gif" width=420 height=320>
+
 Ant
+
 <img src="video\Ant-v2\DDPG.gif" width=420>
+
 HalfCheetah
+
 <img src="video\HalfCheetah-v2\DDPG.gif" width=420>
+
 Hopper
+
 <img src="video\Hopper-v2\DDPG.gif" width=420>
+
 Humanoid
+
 <img src="video\Humanoid-v2\DDPG.gif" width=420>
+
 
 ### 0. Environment
 I used OPENAI gymnasium as the environment, since gym is not officially supported now.
