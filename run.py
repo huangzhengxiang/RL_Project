@@ -60,7 +60,10 @@ if __name__=="__main__":
     config["gamma"]=gamma
     config["world_name"]=world_name
     config["maxT"]=1000 if mtype=="DDPG" or mtype=="A2C" or mtype=="A3C" else maxT # The maxT for continous control is always 1000.
-    config["episode"]=episode
+    if "episode" in config:
+        episode=config["episode"]
+    else:
+        config["episode"]=episode
     model=model_parser(mtype,config,state_dim,action_space)
     if load:
         model.load(dir_path=os.path.join(".","ckpts",world_name,mtype))

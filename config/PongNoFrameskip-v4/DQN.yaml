@@ -4,9 +4,9 @@ cnn: [64,64,32]
 final: 512
 image: [84,84,1]
 mlp: [512,256,256]
-skip_frames_sync: 300
+skip_frames_sync: 500
 history: 4
-skip_frames_backward: 32
+skip_frames_backward: 50
 skip_first_frames: 10
 buffer_size: 30000
 begin_noise: 0.6
@@ -14,4 +14,4 @@ end_noise: 0.1
 lr: 0.0005
 weight_decay: 0.001
 batch_size: 32
-device: "cpu"
+episode: 1000

@@ -375,9 +375,6 @@ class DDPG(ContinuousControl):
             Q_value = - self.DQNet(sample["s"],self.policyNet(sample["s"])).mean()
             Q_value.backward()
             self.policyOptimizer.step()
-        else:
-            print("Unreachable!!!")
-            raise NotImplementedError()
         return loss.item()
     
     def need_sync(self):
@@ -388,8 +385,15 @@ class DDPG(ContinuousControl):
             return False
     
     def sync(self):
-        self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
-        self.targetPolicyNet.load_state_dict(self.policyNet.state_dict().copy())
+        if "tau" in self.config:
+            for targetparam, param in zip(self.targetDQNet.parameters(),self.DQNet.parameters()):
+                targetparam.data = (1-self.config["tau"]) * targetparam.data + self.config["tau"] * param.data
+            for targetparam, param in zip(self.targetPolicyNet.parameters(),self.policyNet.parameters()):
+                targetparam.data = (1-self.config["tau"]) * targetparam.data + self.config["tau"] * param.data
+            return
+        else:
+            self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
+            self.targetPolicyNet.load_state_dict(self.policyNet.state_dict().copy())
     
     def save(self,dir_path,prefix=""):
         os.makedirs(dir_path,exist_ok=True)
@@ -400,7 +404,8 @@ class DDPG(ContinuousControl):
     def load(self,dir_path,prefix=""):
         self.DQNet.load_state_dict(torch.load(os.path.join(dir_path,prefix+"DQNet.pkl")))
         self.policyNet.load_state_dict(torch.load(os.path.join(dir_path,prefix+"policyNet.pkl")))
-        self.sync()
+        self.targetDQNet.load_state_dict(self.DQNet.state_dict().copy())
+        self.targetPolicyNet.load_state_dict(self.policyNet.state_dict().copy())
         return
     
     def set_train(self):
