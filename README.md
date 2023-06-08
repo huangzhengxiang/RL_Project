@@ -23,6 +23,8 @@ video clips:
 
 <img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=420 height=320>
 
+<img src="video\BoxingNoFrameskip-v4\DQN.gif" width=420 height=320>
+
 <img src="video\Ant-v2\DDPG.gif" width=420>
 
 <img src="video\HalfCheetah-v2\DDPG.gif" width=420>
@@ -79,6 +81,7 @@ python human.py --env_name BoxingNoFrameskip-v4
 
 ~~~
 python vis.py --render_mode rgb_array --test_times 1 --env_name VideoPinball-ramNoFrameskip-v4
+python vis.py --render_mode rgb_array --test_times 1 --env_name BoxingNoFrameskip-v4
 python vis.py --env_name BreakoutNoFrameskip-v4 --render_mode human --test_times 1
 python run.py --env_name VideoPinball-ramNoFrameskip-v4 --load
 ~~~  
