@@ -31,6 +31,8 @@ video clips:
 
 <img src="video\Hopper-v2\DDPG.gif" width=420>
 
+<img src="video\Humanoid-v2\DDPG.gif" width=420>
+
 ### 1. train the agent
 For the discrete discision space games, we recommend to use DQN.
 Train the agent with DQN.
@@ -83,5 +85,6 @@ python human.py --env_name BoxingNoFrameskip-v4
 python vis.py --render_mode rgb_array --test_times 1 --env_name VideoPinball-ramNoFrameskip-v4
 python vis.py --render_mode rgb_array --test_times 1 --env_name BoxingNoFrameskip-v4
 python vis.py --env_name BreakoutNoFrameskip-v4 --render_mode human --test_times 1
+python vis.py --env_name Humanoid-v2 --render_mode human --test_times 1
 python run.py --env_name VideoPinball-ramNoFrameskip-v4 --load
 ~~~  
