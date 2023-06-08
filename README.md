@@ -1,17 +1,9 @@
-# RL dProject
+# RL Project
 <b>Author: 黄正翔 (Huang, Zhengxiang)</b>
 
 This is the final project for Reinforcement Learning (RL)
 
 Demo video clips:
-
-VideoPinball
-
-<img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=420 height=320>
-
-Boxing
-
-<img src="video\BoxingNoFrameskip-v4\DQN.gif" width=420 height=320>
 
 Ant
 
@@ -28,6 +20,14 @@ Hopper
 Humanoid
 
 <img src="video\Humanoid-v2\DDPG.gif" width=420>
+
+VideoPinball
+
+<img src="video\VideoPinball-ramNoFrameskip-v4\DQN.gif" width=420 height=320>
+
+Boxing
+
+<img src="video\BoxingNoFrameskip-v4\DQN.gif" width=420 height=320>
 
 
 ### 0. Environment
